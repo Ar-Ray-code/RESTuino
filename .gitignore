@@ -6,3 +6,4 @@
 .vscode/settings.json
 
 src/ssid_define.cpp
+platformio.ini

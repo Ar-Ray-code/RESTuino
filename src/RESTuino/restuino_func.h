@@ -1,12 +1,20 @@
 #pragma once
 
 #include <Arduino.h>
+
+#define _ESP32 0
+#define _RPICO 1
+
+#define BOARD_TYPE _RPICO
+
+#if defined(ESP32)
 #include <WiFi.h>
+#include <ESP32Servo.h>
 #include <EEPROM.h>
 #include <ESPmDNS.h>
 #include <WebServer.h>
-#include <ESP32Servo.h>
-#include <ArduinoJson.h>
+
+#endif
 
 namespace restuino
 {
@@ -47,3 +55,9 @@ private:
   void handle_root(void);
   void handle_gpio(int pin);
 };
+
+
+#include <ArduinoJson.h>
+
+void start();
+void loop_func();
