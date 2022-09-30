@@ -79,9 +79,8 @@ public:
                     url_dir = cache.substring(4, cache.indexOf("HTTP") - 1);
                     mode = MODE_GET;
 
-                    // is int -> gpio_num
-                    if (url_dir.substring(1).toInt() > 0)
-                        gpio_num = url_dir.substring(1).toInt();
+                    if (url_dir.indexOf("gpio") > 0)
+                        gpio_num = url_dir.substring(url_dir.indexOf("gpio") + 4).toInt();
 
                     // print
                     Serial.println("GET (Update): " + url_dir);
@@ -92,9 +91,8 @@ public:
                     url_dir = cache.substring(5, cache.indexOf("HTTP") - 1);
                     mode = MODE_POST;
 
-                     // is int -> gpio_num
-                    if (url_dir.substring(1).toInt() > 0)
-                        gpio_num = url_dir.substring(1).toInt();
+                    if (url_dir.indexOf("gpio") > 0)
+                        gpio_num = url_dir.substring(url_dir.indexOf("gpio") + 4).toInt();
 
                     // print
                     Serial.println("POST (Update): " + url_dir);
@@ -105,9 +103,8 @@ public:
                     url_dir = cache.substring(4, cache.indexOf("HTTP") - 1);
                     mode = MODE_PUT;
 
-                     // is int -> gpio_num
-                    if (url_dir.substring(1).toInt() > 0)
-                        gpio_num = url_dir.substring(1).toInt();
+                    if (url_dir.indexOf("gpio") > 0)
+                        gpio_num = url_dir.substring(url_dir.indexOf("gpio") + 4).toInt();
 
                     // print
                     Serial.println("PUT (Update): " + url_dir);
@@ -118,9 +115,8 @@ public:
                     url_dir = cache.substring(7, cache.indexOf("HTTP") - 1);
                     mode = MODE_DELETE;
 
-                    // is int -> gpio_num
-                    if (url_dir.substring(1).toInt() > 0)
-                        gpio_num = url_dir.substring(1).toInt();
+                    if (url_dir.indexOf("gpio") > 0)
+                        gpio_num = url_dir.substring(url_dir.indexOf("gpio") + 4).toInt();
 
                     // print
                     Serial.println("DELETE (Update): " + url_dir);

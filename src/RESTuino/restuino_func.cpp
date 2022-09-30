@@ -464,7 +464,7 @@ PicoIO picoio;
 void start() {
   Ethernet.init(17);  // WIZnet W5100S-EVB-Pico W5500-EVB-Pico
   Serial.begin(9600);
-  while (!Serial) {;}
+  // while (!Serial) {;}
   Ethernet.begin(mac, ip);
 
   // Check for Ethernet hardware present
@@ -489,6 +489,14 @@ void loop_func() {
   EthernetClient client = server.available();
   String response;
 
+  if(Serial.available())
+  {
+    // print ip
+    Serial.print("IP address: ");
+    Serial.println(Ethernet.localIP());
+    Serial.read();
+  }
+
   if (client) {
     Serial.println("new client");
 
@@ -504,9 +512,8 @@ void loop_func() {
         }
       }
     }
-    // give the web browser time to receive the data
     delay(1);
-    // close the connection:
+
     client.stop();
     Serial.println("client disconnected");
   }

@@ -16,6 +16,8 @@
 
 #endif
 
+#include <ArduinoJson.h>
+
 namespace restuino
 {
   enum status
@@ -57,8 +59,6 @@ private:
 };
 
 
-
-#include <ArduinoJson.h>
 
 void start();
 void loop_func();
