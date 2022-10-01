@@ -449,15 +449,13 @@ void RestuinoFunc::restuino_loop()
 #include "server_utils/server_utils.hpp"
 #include "gpio_utils/picoio.hpp"
 
+
 byte mac[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
 IPAddress ip(192, 168, 0, 177);
 ServerUtils server_utils;
 
-// Initialize the Ethernet server library
-// with the IP address and port you want to use
-// (port 80 is default for HTTP):
 EthernetServer server(80);
 PicoIO picoio;
 
@@ -466,6 +464,8 @@ void start() {
   Serial.begin(9600);
   // while (!Serial) {;}
   Ethernet.begin(mac, ip);
+
+  String host_name = "restuino";
 
   // Check for Ethernet hardware present
   if (Ethernet.hardwareStatus() == EthernetNoHardware) {
@@ -502,7 +502,6 @@ void loop_func() {
 
     while (client.connected()) {
       if (client.available()) {
-        // char c = client.read();
         int res = server_utils.update_cache(client.read());
         if (res)
         {

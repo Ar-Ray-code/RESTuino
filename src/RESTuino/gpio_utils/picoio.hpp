@@ -13,8 +13,8 @@ namespace restuino_pre
         analogread,
         ledcwrite,
         servo,
-        touch,    // kore
-        dacwrite, // kore
+        touch,
+        dacwrite,
         save = 100,
         load,
         reboot,
@@ -52,6 +52,10 @@ public:
         String res;
         uint16_t pin = server_utils.gpio_num;
 
+        Serial.println("---- GET ----");
+        Serial.println("pin: " + String(pin));
+        Serial.println("status: " + String(gpio_arr[pin]));
+
         Serial.println(gpio_arr[pin]);
         switch (gpio_arr[pin])
         {
@@ -79,11 +83,15 @@ public:
         String res;
         restuino_pre::status status = request_to_num(server_utils.data);
         gpio_arr[server_utils.gpio_num] = status;
-        // if digitalWrite
+
         switch (gpio_arr[server_utils.gpio_num])
         {
         case restuino_pre::digitalwrite:
             pinMode(server_utils.gpio_num, OUTPUT);
+            res = server_utils.gen_msg(200, "text/plain", "OK\r\n");
+            break;
+        case restuino_pre::digitalread:
+            pinMode(server_utils.gpio_num, INPUT);
             res = server_utils.gen_msg(200, "text/plain", "OK\r\n");
             break;
         case restuino_pre::analogread:
@@ -91,6 +99,8 @@ public:
             res = server_utils.gen_msg(200, "text/plain", "OK\r\n");
             break;
         case restuino_pre::ledcwrite:
+            pinMode(server_utils.gpio_num, OUTPUT);
+            res = server_utils.gen_msg(200, "text/plain", "OK\r\n");
             break;
         case restuino_pre::servo:
             pinMode(server_utils.gpio_num, OUTPUT);
@@ -103,18 +113,25 @@ public:
         return res;
     }
 
+private:
     String ioPut(ServerUtils &server_utils)
     {
         String target = server_utils.data;
         String res;
+
+        Serial.println("---- PUT ----");
+        Serial.println("pin: " + String(server_utils.gpio_num));
+        Serial.println("status: " + String(target));
+
+
         switch (gpio_arr[server_utils.gpio_num])
         {
         case restuino_pre::digitalwrite:
-            if (target == "HIGH" or target == "1")
+            if (target == "HIGH")// or target == "1")
             {
                 digitalWrite(server_utils.gpio_num, HIGH);
             }
-            else if (target == "LOW" or target == "0")
+            else if (target == "LOW") // or target == "0")
             {
                 digitalWrite(server_utils.gpio_num, LOW);
             }
@@ -126,12 +143,17 @@ public:
             break;
 
         case restuino_pre::ledcwrite:
-            // pwm
+            // 0 ~ 255
+            if (server_utils.data.toInt() < 0 || server_utils.data.toInt() > 255)
+            {
+                Serial.println("error: set 0 ~ 255");
+                return server_utils.handle_not_found();
+            }
             analogWrite(server_utils.gpio_num, server_utils.data.toInt());
             res = server_utils.gen_msg(200, "text/plain", "OK\r\n");
             break;
 
-        default: // nan, not found ○
+        default:
             res = server_utils.handle_not_found();
             break;
         }
@@ -154,7 +176,7 @@ public:
             return restuino_pre::digitalwrite;
         else if (req == "analogRead")
             return restuino_pre::analogread;
-        else if (req == "ledcWrite")
+        else if (req == "ledcWrite" || req == "pwm")
             return restuino_pre::ledcwrite;
         else if (req == "Servo")
             return restuino_pre::servo;
