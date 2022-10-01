@@ -158,7 +158,6 @@ public:
         else
         {
             cache += c;
-            Serial.print(cache);
             if (content_length_min == 1)
             {
                 if (skip_read_flag_for_char)
@@ -171,7 +170,7 @@ public:
             if (cache.length() == content_length_min)
             {
                 data = cache;
-                Serial.println("Data (Update): " + data);
+                // Serial.println("Data (Update): " + data);
                 content_length_min = MAX_LENGETH;
                 skip_read_flag_for_char = true;
                 clear_cache();

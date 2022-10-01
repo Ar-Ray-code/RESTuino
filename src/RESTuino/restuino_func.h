@@ -60,5 +60,5 @@ private:
 
 
 
-void start();
+void start(byte*, IPAddress);
 void loop_func();

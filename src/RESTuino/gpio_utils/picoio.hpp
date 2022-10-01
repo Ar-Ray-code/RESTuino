@@ -3,6 +3,10 @@
 #include <Arduino.h>
 #include "../server_utils/server_utils.hpp"
 
+#include <Servo.h>
+#include <vector>
+#include <algorithm>
+
 namespace restuino_pre
 {
     enum status
@@ -22,7 +26,6 @@ namespace restuino_pre
     };
 }
 
-// static uint16_t gpio_arr[40] = {}; //すべて0で初期化
 
 class PicoIO
 {
@@ -47,9 +50,24 @@ public:
         }
     }
 
+    template <typename T>
+    int detect_index(const std::vector<T> &vec, const T &value)
+    {
+        auto it = std::find(vec.begin(), vec.end(), value);
+        if (it != vec.end())
+        {
+            return std::distance(vec.begin(), it);
+        }
+        else
+        {
+            return -1;
+        }
+    }
+
     String ioGet(ServerUtils &server_utils)
     {
         String res;
+        int angle;
         uint16_t pin = server_utils.gpio_num;
 
         Serial.println("---- GET ----");
@@ -60,9 +78,9 @@ public:
         switch (gpio_arr[pin])
         {
         case restuino_pre::servo:
-            res = server_utils.gen_msg(200, "text/plain", String(gpio_arr[pin]) + "\r\n");
+            angle = servos[detect_index<uint8_t>(servo_pins, pin)].read();
+            res = server_utils.gen_msg(200, "text/plain", String(angle));
             break;
-
         case restuino_pre::digitalread:
             res = server_utils.gen_msg(200, "text/plain", String(digitalRead(pin)) + "\r\n");
             break;
@@ -103,7 +121,18 @@ public:
             res = server_utils.gen_msg(200, "text/plain", "OK\r\n");
             break;
         case restuino_pre::servo:
-            pinMode(server_utils.gpio_num, OUTPUT);
+            if (servo_pins.size() > 0)
+            {
+                if (detect_index<uint8_t>(servo_pins, server_utils.gpio_num) != -1)
+                {
+                    res = server_utils.handle_not_found();
+                    return res;
+                }
+            }
+            servos.push_back(Servo());
+            servo_pins.push_back(server_utils.gpio_num);
+            servos[servos.size() - 1].attach(server_utils.gpio_num);
+
             res = server_utils.gen_msg(200, "text/plain", "OK\r\n");
             break;
         default:
@@ -152,6 +181,16 @@ private:
             analogWrite(server_utils.gpio_num, server_utils.data.toInt());
             res = server_utils.gen_msg(200, "text/plain", "OK\r\n");
             break;
+        case restuino_pre::servo:
+            // 0 ~ 180
+            if (server_utils.data.toInt() < 0 || server_utils.data.toInt() > 180)
+            {
+                Serial.println("error: set 0 ~ 180");
+                return server_utils.handle_not_found();
+            }
+            servos[detect_index<uint8_t>(servo_pins, server_utils.gpio_num)].write(server_utils.data.toInt());
+            res = server_utils.gen_msg(200, "text/plain", "OK\r\n");
+            break;
 
         default:
             res = server_utils.handle_not_found();
@@ -163,6 +202,22 @@ private:
 
     String ioDelete(ServerUtils &server_utils)
     {
+        switch (gpio_arr[server_utils.gpio_num])
+        {
+        case restuino_pre::servo:
+            if (servo_pins.size() > 0)
+            {
+                if (detect_index<uint8_t>(servo_pins, server_utils.gpio_num) != -1)
+                {
+                    servos[detect_index<uint8_t>(servo_pins, server_utils.gpio_num)].detach();
+                    servos.erase(servos.begin() + detect_index<uint8_t>(servo_pins, server_utils.gpio_num));
+                    servo_pins.erase(servo_pins.begin() + detect_index<uint8_t>(servo_pins, server_utils.gpio_num));
+                    return server_utils.gen_msg(200, "text/plain", "Erase OK\r\n");
+                }
+            }
+        default:
+            break;
+        }
         return server_utils.handle_not_found();
     }
 
@@ -189,4 +244,9 @@ private:
         else
             return restuino_pre::not_found;
     }
+private:
+    // 10 servos
+    std::vector<Servo> servos;
+    std::vector<uint8_t> servo_pins;
+    // Servo servo;
 };

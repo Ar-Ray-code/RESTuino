@@ -449,20 +449,15 @@ void RestuinoFunc::restuino_loop()
 #include "server_utils/server_utils.hpp"
 #include "gpio_utils/picoio.hpp"
 
+void start(byte* mac = (byte*)"\x00\x08\xDC\x11\x22\x33", IPAddress ip = IPAddress(192, 168, 0, 177))
+{
+  ServerUtils server_utils;
+  EthernetServer server(80);
+  PicoIO picoio;
 
-byte mac[] = {
-  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-};
-IPAddress ip(192, 168, 0, 177);
-ServerUtils server_utils;
 
-EthernetServer server(80);
-PicoIO picoio;
-
-void start() {
   Ethernet.init(17);  // WIZnet W5100S-EVB-Pico W5500-EVB-Pico
   Serial.begin(9600);
-  // while (!Serial) {;}
   Ethernet.begin(mac, ip);
 
   String host_name = "restuino";
@@ -482,41 +477,43 @@ void start() {
   server.begin();
   Serial.print("server is at ");
   Serial.println(Ethernet.localIP());
-}
 
-
-void loop_func() {
-  EthernetClient client = server.available();
-  String response;
-
-  if(Serial.available())
+  // loop ---------------------------------------------------------------------
+  while(1)
   {
-    // print ip
-    Serial.print("IP address: ");
-    Serial.println(Ethernet.localIP());
-    Serial.read();
-  }
+    EthernetClient client = server.available();
+    String response;
 
-  if (client) {
-    Serial.println("new client");
+    if(Serial.available())
+    {
+      // print ip
+      Serial.print("IP address: ");
+      Serial.println(Ethernet.localIP());
+      Serial.read();
+    }
 
-    while (client.connected()) {
-      if (client.available()) {
-        int res = server_utils.update_cache(client.read());
-        if (res)
-        {
-          response = picoio.ioUpdate(server_utils);
-          client.print(response);
-          break;
+    if (client) {
+      Serial.println("new client");
+
+      while (client.connected()) {
+        if (client.available()) {
+          int res = server_utils.update_cache(client.read());
+          if (res)
+          {
+            response = picoio.ioUpdate(server_utils);
+            client.print(response);
+            break;
+          }
         }
       }
-    }
-    delay(1);
+      delay(1);
 
-    client.stop();
-    Serial.println("client disconnected");
+      client.stop();
+      Serial.println("client disconnected");
+    }
   }
 }
+
 
 
 #endif
