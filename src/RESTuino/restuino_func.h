@@ -58,7 +58,6 @@ private:
   void handle_gpio(int pin);
 };
 
-
-
-void start(byte*, IPAddress);
+#include "gpio_utils/gpiotype.hpp"
+void start(GpioDefaultList, byte*, IPAddress);
 void loop_func();

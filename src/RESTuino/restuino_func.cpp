@@ -448,12 +448,14 @@ void RestuinoFunc::restuino_loop()
 
 #include "server_utils/server_utils.hpp"
 #include "gpio_utils/picoio.hpp"
+#include "gpio_utils/gpiotype.hpp"
 
-void start(byte* mac = (byte*)"\x00\x08\xDC\x11\x22\x33", IPAddress ip = IPAddress(192, 168, 0, 177))
+void start(GpioDefaultList gpio_table, byte* mac = (byte*)"\x00\x08\xDC\x11\x22\x33", IPAddress ip = IPAddress(192, 168, 0, 177))
 {
   ServerUtils server_utils;
   EthernetServer server(80);
-  PicoIO picoio;
+
+  PicoIO picoio(gpio_table);
 
 
   Ethernet.init(17);  // WIZnet W5100S-EVB-Pico W5500-EVB-Pico

@@ -3,6 +3,9 @@
 #include <Arduino.h>
 #include "../server_utils/server_utils.hpp"
 
+#include "gpio_allocator.hpp"
+#include "gpiotype.hpp"
+
 #include <Servo.h>
 #include <vector>
 #include <algorithm>
@@ -23,6 +26,7 @@ namespace restuino_pre
         load,
         reboot,
         not_found,
+        ls_free
     };
 }
 
@@ -30,8 +34,53 @@ namespace restuino_pre
 class PicoIO
 {
 public:
-    PicoIO() {}
+    PicoIO(GpioDefaultList gpio_list)
+    {
+        gpio_table_pico_ = std::make_unique<GpioTable>(gpio_list);
+    }
     ~PicoIO() {}
+
+    GpioMode purpose_convert(restuino_pre::status _status)
+    {
+        switch (_status)
+        {
+        case restuino_pre::digitalread:
+            return GpioMode::IO_INPUT;
+        case restuino_pre::digitalwrite:
+            return GpioMode::IO_OUTPUT;
+        case restuino_pre::analogread:
+            return GpioMode::IO_ANALOG_INPUT;
+        case restuino_pre::ledcwrite:
+            return GpioMode::IO_PWM;
+        case restuino_pre::servo:
+            return GpioMode::IO_SERVO;
+        case restuino_pre::touch:
+            return GpioMode::IO_TOUCH;
+        default:
+            return GpioMode::IO_NONE;
+        }
+    }
+
+    GpioMode purpose_convert(uint16_t _status)
+    {
+        switch (_status)
+        {
+        case 1:
+            return GpioMode::IO_INPUT;
+        case 2:
+            return GpioMode::IO_OUTPUT;
+        case 3:
+            return GpioMode::IO_ANALOG_INPUT;
+        case 4:
+            return GpioMode::IO_PWM;
+        case 5:
+            return GpioMode::IO_SERVO;
+        case 6:
+            return GpioMode::IO_TOUCH;
+        default:
+            return GpioMode::IO_NONE;
+        }
+    }
 
     String ioUpdate(ServerUtils &server_utils)
     {
@@ -70,6 +119,11 @@ public:
         int angle;
         uint16_t pin = server_utils.gpio_num;
 
+        if (!gpio_table_pico_->is_allocated(server_utils.gpio_num, purpose_convert(gpio_arr[pin])))
+        {
+            return server_utils.handle_not_found();
+        }
+
         Serial.println("---- GET ----");
         Serial.println("pin: " + String(pin));
         Serial.println("status: " + String(gpio_arr[pin]));
@@ -96,11 +150,53 @@ public:
         return res;
     }
 
+
     String ioPost(ServerUtils &server_utils)
     {
         String res;
         restuino_pre::status status = request_to_num(server_utils.data);
         gpio_arr[server_utils.gpio_num] = status;
+
+        if (status == restuino_pre::ls_free)
+        {
+            auto gpios = gpio_table_pico_->ls_all();
+            res += "GPIO\tMODE\tSTATUS\r\n";
+            for (auto gpio : gpios)
+            {
+                if (std::get<0>(gpio) < 10)
+                {
+                    res += " ";
+                }
+                res += String(std::get<0>(gpio));
+                res += "\t";
+                if (std::get<GPIO_STATUS>(gpio).mode == GpioMode::IO_NONE)
+                    res += "FREE";
+                else if (std::get<GPIO_STATUS>(gpio).mode == GpioMode::IO_INPUT)
+                    res += "INPUT";
+                else if (std::get<GPIO_STATUS>(gpio).mode == GpioMode::IO_OUTPUT)
+                    res += "OUTPUT";
+                else if (std::get<GPIO_STATUS>(gpio).mode == GpioMode::IO_ANALOG_INPUT)
+                    res += "ANALOG";
+                else if (std::get<GPIO_STATUS>(gpio).mode == GpioMode::IO_PWM)
+                    res += "PWM";
+                else if (std::get<GPIO_STATUS>(gpio).mode == GpioMode::IO_SERVO)
+                    res += "SERVO";
+                else if (std::get<GPIO_STATUS>(gpio).mode == GpioMode::IO_TOUCH)
+                    res += "TOUCH";
+                else
+                    res += "?";
+                res += "\r\n";
+            }
+            res += "----------------\r\n";
+            res = server_utils.gen_msg(200, "text/plain", res);
+            return res;
+        }
+
+        // GPIO availability check
+        if (!gpio_table_pico_->allocate(server_utils.gpio_num, purpose_convert(status)))
+        {
+            return server_utils.handle_not_found();
+        }
 
         switch (gpio_arr[server_utils.gpio_num])
         {
@@ -152,6 +248,11 @@ private:
         Serial.println("pin: " + String(server_utils.gpio_num));
         Serial.println("status: " + String(target));
 
+        if (!gpio_table_pico_->is_allocated(server_utils.gpio_num, purpose_convert(gpio_arr[server_utils.gpio_num])))
+        {
+            return server_utils.handle_not_found();
+        }
+
 
         switch (gpio_arr[server_utils.gpio_num])
         {
@@ -202,6 +303,8 @@ private:
 
     String ioDelete(ServerUtils &server_utils)
     {
+        gpio_table_pico_->free(server_utils.gpio_num);
+
         switch (gpio_arr[server_utils.gpio_num])
         {
         case restuino_pre::servo:
@@ -216,6 +319,7 @@ private:
                 }
             }
         default:
+            return server_utils.gen_msg(200, "text/plain", "OK\r\n");
             break;
         }
         return server_utils.handle_not_found();
@@ -241,6 +345,8 @@ private:
             return restuino_pre::load;
         else if (req == "reboot")
             return restuino_pre::reboot;
+        else if (req == "ls")
+            return restuino_pre::ls_free;
         else
             return restuino_pre::not_found;
     }
@@ -248,5 +354,6 @@ private:
     // 10 servos
     std::vector<Servo> servos;
     std::vector<uint8_t> servo_pins;
+    std::unique_ptr<GpioTable> gpio_table_pico_;
     // Servo servo;
 };
