@@ -95,6 +95,7 @@ public:
         case MODE_DELETE:
             return ioDelete(server_utils);
         default:
+            Serial.println("mode not found");
             return server_utils.handle_not_found();
         }
     }
@@ -121,6 +122,7 @@ public:
 
         if (!gpio_table_pico_->is_allocated(server_utils.gpio_num, purpose_convert(gpio_arr[pin])))
         {
+            Serial.println("not allocated");
             return server_utils.handle_not_found();
         }
 
@@ -144,6 +146,7 @@ public:
             break;
 
         default:
+            Serial.println("ioGet: not found");
             res = server_utils.handle_not_found();
             break;
         }
@@ -185,6 +188,9 @@ public:
                     res += "TOUCH";
                 else
                     res += "?";
+
+                res += "\t";
+                res += String(std::get<GPIO_STATUS>(gpio).status_str);
                 res += "\r\n";
             }
             res += "----------------\r\n";
@@ -195,6 +201,7 @@ public:
         // GPIO availability check
         if (!gpio_table_pico_->allocate(server_utils.gpio_num, purpose_convert(status)))
         {
+            Serial.println("ioPost: not available");
             return server_utils.handle_not_found();
         }
 
@@ -221,6 +228,7 @@ public:
             {
                 if (detect_index<uint8_t>(servo_pins, server_utils.gpio_num) != -1)
                 {
+                    Serial.println("ioPost: servo already exists");
                     res = server_utils.handle_not_found();
                     return res;
                 }
@@ -232,6 +240,7 @@ public:
             res = server_utils.gen_msg(200, "text/plain", "OK\r\n");
             break;
         default:
+            Serial.println("ioPost: not found");
             res = server_utils.handle_not_found();
             break;
         }
@@ -260,13 +269,16 @@ private:
             if (target == "HIGH")// or target == "1")
             {
                 digitalWrite(server_utils.gpio_num, HIGH);
+                std::get<GPIO_STATUS>(gpio_table_pico_->gpio_table_.at(server_utils.gpio_num)).status_str = "HIGH";
             }
             else if (target == "LOW") // or target == "0")
             {
                 digitalWrite(server_utils.gpio_num, LOW);
+                std::get<GPIO_STATUS>(gpio_table_pico_->gpio_table_.at(server_utils.gpio_num)).status_str = "LOW";
             }
             else
             {
+                Serial.println("ioPut: set HIGH or LOW");
                 return server_utils.handle_not_found();
             }
             res = server_utils.gen_msg(200, "text/plain", "OK\r\n");
@@ -276,24 +288,27 @@ private:
             // 0 ~ 255
             if (server_utils.data.toInt() < 0 || server_utils.data.toInt() > 255)
             {
-                Serial.println("error: set 0 ~ 255");
+                Serial.println("ioPut: set 0 ~ 255");
                 return server_utils.handle_not_found();
             }
             analogWrite(server_utils.gpio_num, server_utils.data.toInt());
+            std::get<GPIO_STATUS>(gpio_table_pico_->gpio_table_.at(server_utils.gpio_num)).status_str = server_utils.data;
             res = server_utils.gen_msg(200, "text/plain", "OK\r\n");
             break;
         case restuino_pre::servo:
             // 0 ~ 180
             if (server_utils.data.toInt() < 0 || server_utils.data.toInt() > 180)
             {
-                Serial.println("error: set 0 ~ 180");
+                Serial.println("ioPut: set 0 ~ 180");
                 return server_utils.handle_not_found();
             }
             servos[detect_index<uint8_t>(servo_pins, server_utils.gpio_num)].write(server_utils.data.toInt());
+            std::get<GPIO_STATUS>(gpio_table_pico_->gpio_table_.at(server_utils.gpio_num)).status_str = server_utils.data;
             res = server_utils.gen_msg(200, "text/plain", "OK\r\n");
             break;
 
         default:
+            Serial.println("ioPut: Invalid request");
             res = server_utils.handle_not_found();
             break;
         }
@@ -322,6 +337,7 @@ private:
             return server_utils.gen_msg(200, "text/plain", "OK\r\n");
             break;
         }
+        Serial.println("ioDelete: not found");
         return server_utils.handle_not_found();
     }
 

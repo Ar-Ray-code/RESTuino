@@ -39,6 +39,7 @@ struct gpio_status
 {
     GpioMode mode = GpioMode::IO_NONE;
     bool using_flag = false;
+    String status_str = "";
 };
 
 

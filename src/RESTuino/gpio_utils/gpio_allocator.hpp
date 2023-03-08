@@ -237,6 +237,5 @@ public:
         }
     }
 
-private:
     GpioDefaultList gpio_table_;
 };
