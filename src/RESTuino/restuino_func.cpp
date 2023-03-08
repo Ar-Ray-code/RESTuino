@@ -1,15 +1,9 @@
 #include "restuino_func.h"
 #include "ssid_define.h"
 
-static const char *host_name = "restuino"; // RESTuino
-static const uint8_t n = 40;
-static uint16_t gpio_arr[n] = {}; //すべて0で初期化
-// Pubished values for SG90 servos; adjust if needed
-static const uint32_t minUs = 0;
-static const uint32_t maxUs = 5000;
-// 180> angle > angle0 >= 0にすること
-static const uint8_t angle0 = 5;
-static const uint8_t angle = 60;
+
+
+#if defined(ESP32)
 
 static WebServer server(80);
 static Servo servo1;
@@ -444,3 +438,84 @@ void RestuinoFunc::restuino_loop()
 {
   server.handleClient();
 }
+
+#endif
+
+#if defined(ARDUINO_ARCH_RP2040)
+
+#include <SPI.h>
+#include <Ethernet.h>
+
+#include "server_utils/server_utils.hpp"
+#include "gpio_utils/picoio.hpp"
+#include "gpio_utils/gpiotype.hpp"
+
+void start(GpioDefaultList gpio_table, byte* mac = (byte*)"\x00\x08\xDC\x11\x22\x33", IPAddress ip = IPAddress(192, 168, 0, 177))
+{
+  ServerUtils server_utils;
+  EthernetServer server(80);
+
+  PicoIO picoio(gpio_table);
+
+
+  Ethernet.init(17);  // WIZnet W5100S-EVB-Pico W5500-EVB-Pico
+  Serial.begin(9600);
+  Ethernet.begin(mac, ip);
+
+  String host_name = "restuino";
+
+  // Check for Ethernet hardware present
+  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+    Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
+    while (true) {
+      delay(1); // do nothing, no point running without Ethernet hardware
+    }
+  }
+  if (Ethernet.linkStatus() == LinkOFF) {
+    Serial.println("Ethernet cable is not connected.");
+  }
+
+  // start the server
+  server.begin();
+  Serial.print("server is at ");
+  Serial.println(Ethernet.localIP());
+
+  // loop ---------------------------------------------------------------------
+  while(1)
+  {
+    EthernetClient client = server.available();
+    String response;
+
+    if(Serial.available())
+    {
+      // print ip
+      Serial.print("IP address: ");
+      Serial.println(Ethernet.localIP());
+      Serial.read();
+    }
+
+    if (client) {
+      Serial.println("new client");
+
+      while (client.connected()) {
+        if (client.available()) {
+          int res = server_utils.update_cache(client.read());
+          if (res)
+          {
+            response = picoio.ioUpdate(server_utils);
+            client.print(response);
+            break;
+          }
+        }
+      }
+      delay(1);
+
+      client.stop();
+      Serial.println("client disconnected");
+    }
+  }
+}
+
+
+
+#endif
